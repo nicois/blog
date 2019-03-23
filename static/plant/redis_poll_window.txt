@@ -1,0 +1,38 @@
+@startuml
+Title Redis polling agent sequence diagram
+entity mq as "Legacy applicationss"
+database db as "Legacy DB"
+entity agent as "Polling agent"
+boundary sset as "Sorted Set"
+control stream as "Stream"
+mq -> db : T=10: Customer 1 name=A
+mq -> db : T=20: Customer 2 name=B
+agent -> db : T=50: Poll
+db -> agent : return [1/A, 2/B]
+note right: agent retrieves both changed records
+mq -> db : T=70: Customer 1 name=C
+group redis lua server script
+    agent -> sset : identify duplicates
+    note right : no duplicates, set was empty, now contains [1/A, 2/B]
+    agent -> stream: insert [1/A, 2/B]
+    note right : [1/A, 2/B]
+end
+mq -> db : T=90: Customer 1 name=D
+agent -> db : T=100: Poll (retrieve all changed records\nsince 60 seconds before 2/B)
+db -> agent : return [1/D, 2/B]
+note right: agent retrieves changed record and unchanged record, as it\nfalls in the 60 second window
+group redis lua server script
+    agent -> sset : identify duplicates
+    note right : 2/B is a duplicate, set now contains [1/D, 2/B]
+    agent -> stream: insert [1/D]
+    note right : [1/A, 2/B, 1/D]
+end
+agent -> db : T=150: Poll (retrieve all changed records\nsince 60 seconds before 1/D)
+db -> agent : return [1/D]
+group redis lua server script
+    agent -> sset : identify duplicates
+    note right : 1/D is a duplicate; set still contains [1/D]
+    agent -> stream: (no operation)
+    note right : [1/A, 2/B, 1/D]
+end
+@enduml

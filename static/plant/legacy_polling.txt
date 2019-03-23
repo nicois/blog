@@ -1,0 +1,70 @@
+@startuml
+Title Legacy point-to-point polling application
+package "GenesisCare" #00bf6f {
+    node "Mosaiq Instances" {
+        [ARC]
+        [CCQ]
+        [CWA]
+        [ROA]
+        [ROV]
+    }
+
+    frame "Redis" {
+        [ARC] --> [Polling agent] : TCP/1433
+        [CCQ] --> [Polling agent] : TCP/1433
+        [CWA] --> [Polling agent] : TCP/1433
+        [ROA] --> [Polling agent] : TCP/1433
+        [ROV] --> [Polling agent] : TCP/1433
+        [Polling agent] --> [Master] : TCP/6379, push
+        [Master] --> [Slave] : TCP/6379, push
+        note left of [Slave] : may be located in Azure instead; TBD
+    }
+
+    frame "Iguana" {
+        [Parseltongue] --> [Agent] : TCP/80, push
+        [Agent] --> [ARC] : TCP/1433
+        [Agent] --> [CCQ] : TCP/1433
+        [Agent] --> [CWA] : TCP/1433
+        [Agent] --> [ROA] : TCP/1433
+        [Agent] --> [ROV] : TCP/1433
+    }
+}
+
+
+package "Patient Portal" #Azure  {
+    [Slave] --> [PP Redis listener] : TCP/6379, push
+
+    frame "PP Web App" {
+        [PP Redis listener] --> [PP Webserver] : TCP/443, push
+        [PP Webserver] --> [PP Database] : TCP/5432
+    }
+
+    [PP Webserver] --> [PP Outgoing message queue] : TCP/6379, push
+    [PP Outgoing message queue] --> [Parseltongue] : TCP/6379, push
+}
+
+package "Oncology Portal" #Magenta  {
+    [Slave] --> [OP Redis listener] : TCP/6379, push
+
+    frame "OP Web App" {
+        [OP Redis listener] --> [OP Webserver] : TCP/443, push
+        [OP Webserver] --> [OP Database] : TCP/5432
+    }
+
+    [OP Webserver] --> [OP Outgoing message queue] : TCP/6379, push
+    [OP Outgoing message queue] --> [Parseltongue] : TCP/6379, push
+}
+
+
+cloud "Office365" #Magenta {
+    [PP Webserver] --> [SAML IdP] : TCP/443, via browser
+}
+
+
+
+skinparam package {
+    backgroundColor Yellow
+}
+
+@enduml
+
