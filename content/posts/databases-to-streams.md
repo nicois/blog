@@ -22,7 +22,7 @@ LISTEN/NOTIFY pattern, too.
 
 (I will gloss over the initial poll - I can go into detail in another post, if there is interest)
 
-{{< figure src="/plant/redis_polling_agent.png"  >}}
+{{< figure src="/plant/redis_polling_agent.png" >}}
 
 1. We create a polling agent, configured to periodically execute a SQL query against the source,
    using some means to identify customers with updates since time X. (If your query spans multiple
